@@ -1,63 +1,74 @@
 package com.example.employeemanagement.models;
 
 import jakarta.persistence.*;
-import java.time.LocalDateTime;
+import java.sql.Timestamp;
+import java.util.Objects;
 
 @Entity
+@Table(name = "audit_trail")
 public class AuditTrail {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long auditId;
+    @Column(name = "change_id", nullable = false)
+    private Long changeId;
 
-    @ManyToOne
-    @JoinColumn(name = "acting_employee_id", nullable = false)
-    private Employee actingEmployee; // The employee performing the action
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "employee_id", referencedColumnName = "employee_id", nullable = false)
+    private Employee employee;
 
-    @ManyToOne
-    @JoinColumn(name = "target_employee_id")
-    private Employee targetEmployee; // The employee affected by the action
+    @Column(name = "timestamp", nullable = false)
+    private Timestamp timestamp;
 
+    @Column(name = "modified_by", nullable = false, length = 255)
+    private String modifiedBy;
+
+    @Column(name = "action", nullable = false, length = 50)
     private String action;
-    private String changeDetails;
-
-    private LocalDateTime timestamp;
 
     // Default constructor
-    public AuditTrail() {}
+    public AuditTrail() {
+    }
 
-    // Parameterized constructor
-    public AuditTrail(Employee actingEmployee, Employee targetEmployee, String action, String changeDetails, LocalDateTime timestamp) {
-        this.actingEmployee = actingEmployee;
-        this.targetEmployee = targetEmployee;
+    // Constructor with all fields
+    public AuditTrail(Employee employee, String modifiedBy, String action) {
+        this.employee = employee;
+        this.timestamp = new Timestamp(System.currentTimeMillis());
+        this.modifiedBy = modifiedBy;
         this.action = action;
-        this.changeDetails = changeDetails;
-        this.timestamp = timestamp;
     }
 
     // Getters and Setters
-    public Long getAuditId() {
-        return auditId;
+    public Long getChangeId() {
+        return changeId;
     }
 
-    public void setAuditId(Long auditId) {
-        this.auditId = auditId;
+    public void setChangeId(Long changeId) {
+        this.changeId = changeId;
     }
 
-    public Employee getActingEmployee() {
-        return actingEmployee;
+    public Employee getEmployee() {
+        return employee;
     }
 
-    public void setActingEmployee(Employee actingEmployee) {
-        this.actingEmployee = actingEmployee;
+    public void setEmployee(Employee employee) {
+        this.employee = employee;
     }
 
-    public Employee getTargetEmployee() {
-        return targetEmployee;
+    public Timestamp getTimestamp() {
+        return timestamp;
     }
 
-    public void setTargetEmployee(Employee targetEmployee) {
-        this.targetEmployee = targetEmployee;
+    public void setTimestamp(Timestamp timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public String getModifiedBy() {
+        return modifiedBy;
+    }
+
+    public void setModifiedBy(String modifiedBy) {
+        this.modifiedBy = modifiedBy;
     }
 
     public String getAction() {
@@ -68,32 +79,33 @@ public class AuditTrail {
         this.action = action;
     }
 
-    public String getChangeDetails() {
-        return changeDetails;
+    // Override equals and hashCode for proper comparisons
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AuditTrail that = (AuditTrail) o;
+        return Objects.equals(changeId, that.changeId) &&
+                Objects.equals(employee, that.employee) &&
+                Objects.equals(timestamp, that.timestamp) &&
+                Objects.equals(modifiedBy, that.modifiedBy) &&
+                Objects.equals(action, that.action);
     }
 
-    public void setChangeDetails(String changeDetails) {
-        this.changeDetails = changeDetails;
+    @Override
+    public int hashCode() {
+        return Objects.hash(changeId, employee, timestamp, modifiedBy, action);
     }
 
-    public LocalDateTime getTimestamp() {
-        return timestamp;
-    }
-
-    public void setTimestamp(LocalDateTime timestamp) {
-        this.timestamp = timestamp;
-    }
-
-    // Optional: Utility methods
+    // toString for logging and debugging
     @Override
     public String toString() {
         return "AuditTrail{" +
-                "auditId=" + auditId +
-                ", actingEmployee=" + (actingEmployee != null ? actingEmployee.getFullName() : "null") +
-                ", targetEmployee=" + (targetEmployee != null ? targetEmployee.getFullName() : "null") +
-                ", action='" + action + '\'' +
-                ", changeDetails='" + changeDetails + '\'' +
+                "changeId=" + changeId +
+                ", employee=" + (employee != null ? employee.getEmployeeId() : null) +
                 ", timestamp=" + timestamp +
+                ", modifiedBy='" + modifiedBy + '\'' +
+                ", action='" + action + '\'' +
                 '}';
     }
 }

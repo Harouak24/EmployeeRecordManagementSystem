@@ -1,35 +1,40 @@
 package com.example.employeemanagement.models;
 
 import jakarta.persistence.*;
+import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Entity
+@Table(name = "department")
 public class Department {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long departmentId;
+    @Column(name = "department_id", nullable = false, unique = true, length = 50)
+    private String departmentId;
 
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
 
-    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Employee> employees;
+    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private Set<Employee> employees = new HashSet<>();
 
     // Default constructor
-    public Department() {}
+    public Department() {
+    }
 
-    // Parameterized constructor
-    public Department(String name, Set<Employee> employees) {
+    // Constructor with all fields
+    public Department(String departmentId, String name) {
+        this.departmentId = departmentId;
         this.name = name;
-        this.employees = employees;
     }
 
     // Getters and Setters
-    public Long getDepartmentId() {
+    public String getDepartmentId() {
         return departmentId;
     }
 
-    public void setDepartmentId(Long departmentId) {
+    public void setDepartmentId(String departmentId) {
         this.departmentId = departmentId;
     }
 
@@ -49,13 +54,37 @@ public class Department {
         this.employees = employees;
     }
 
-    // Optional: Utility methods
+    // Utility Methods for Managing Employees
+    public void addEmployee(Employee employee) {
+        employees.add(employee);
+        employee.setDepartment(this);
+    }
+
+    public void removeEmployee(Employee employee) {
+        employees.remove(employee);
+        employee.setDepartment(null);
+    }
+
+    // Override equals and hashCode for proper comparisons
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Department that = (Department) o;
+        return Objects.equals(departmentId, that.departmentId) && Objects.equals(name, that.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(departmentId, name);
+    }
+
+    // toString for logging and debugging
     @Override
     public String toString() {
         return "Department{" +
-                "departmentId=" + departmentId +
+                "departmentId='" + departmentId + '\'' +
                 ", name='" + name + '\'' +
-                ", employeesCount=" + (employees != null ? employees.size() : 0) +
                 '}';
     }
 }

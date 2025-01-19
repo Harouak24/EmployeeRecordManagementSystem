@@ -2,36 +2,45 @@ package com.example.employeemanagement.repositories;
 
 import com.example.employeemanagement.models.Employee;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Date;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 
 @Repository
-public interface EmployeeRepository extends JpaRepository<Employee, Long> {
+public interface EmployeeRepository extends JpaRepository<Employee, String> {
 
-    // Find employees by department
-    List<Employee> findByDepartment(String department);
+    // Fetch employee by username for authentication
+    Optional<Employee> findByUsername(String username);
 
-    // Find employees by manager ID
-    Set<Employee> findByManagerId(Long managerId);
+    // Find employees by department ID
+    List<Employee> findByDepartment_DepartmentId(String departmentId);
 
-    // Search employees by name, ID, department, or job title
-    List<Employee> findByFullNameContainingOrEmployeeIdContainingOrDepartmentContainingOrJobTitleContaining(
-            String fullName, String employeeId, String department, String jobTitle);
+    // Find employees by role ID
+    List<Employee> findByRole_RoleId(String roleId);
 
-    // Filter employees by employment status, department, or hire date
-    List<Employee> findByEmploymentStatusContainingOrDepartmentContainingOrHireDateContaining(
-            String employmentStatus, String department, String hireDate);
+    // Search employees by name (case-insensitive partial match)
+    @Query("SELECT e FROM Employee e WHERE LOWER(e.fullName) LIKE LOWER(CONCAT('%', :name, '%'))")
+    List<Employee> searchByName(@Param("name") String name);
 
-    // Alternative search method for employees by name, ID, department, or job title
-    List<Employee> findByNameOrEmployeeIdOrDepartmentOrJobTitle(
-            String name, String employeeId, String department, String jobTitle);
+    // Filter employees by employment status
+    List<Employee> findByEmploymentStatus(String employmentStatus);
 
-    // Alternative filter method for employees by employment status, department, and hire date
-    List<Employee> findByEmploymentStatusOrDepartmentOrHireDate(
-            String status, String department, String hireDate);
+    // Find employees hired within a specific date range
+    @Query("SELECT e FROM Employee e WHERE e.hireDate BETWEEN :startDate AND :endDate")
+    List<Employee> findByHireDateRange(@Param("startDate") Date startDate, @Param("endDate") Date endDate);
 
-    // Find employees by role name
-    List<Employee> findByRoles_Name(String roleName);
+    // Find employees by job title (case-insensitive)
+    @Query("SELECT e FROM Employee e WHERE LOWER(e.jobTitle) = LOWER(:jobTitle)")
+    List<Employee> findByJobTitleIgnoreCase(@Param("jobTitle") String jobTitle);
+
+    // Get all employees with a specific combination of department and role
+    @Query("SELECT e FROM Employee e WHERE e.department.departmentId = :departmentId AND e.role.roleId = :roleId")
+    List<Employee> findByDepartmentAndRole(@Param("departmentId") String departmentId, @Param("roleId") String roleId);
+
+    // Count employees in a specific department
+    long countByDepartment_DepartmentId(String departmentId);
 }

@@ -2,97 +2,148 @@ package com.example.employeemanagement.controllers;
 
 import com.example.employeemanagement.models.Employee;
 import com.example.employeemanagement.services.EmployeeService;
-import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.core.io.Resource;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
+import java.nio.charset.StandardCharsets;
+import java.sql.Date;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/employees")
-@Tag(name = "Employee Management", description = "Endpoints for managing employee records")
+@Tag(name = "Employees", description = "APIs for employee management")
 public class EmployeeController {
 
-    @Autowired
-    private EmployeeService employeeService;
+    private final EmployeeService employeeService;
 
-    // Create a new employee
-    @Operation(summary = "Create a new employee", description = "Adds a new employee record to the system.")
-    @PostMapping
-    public ResponseEntity<Employee> createEmployee(
-            @RequestParam Long actingEmployeeId, 
-            @Valid @RequestBody Employee employee) {
-        Employee actingEmployee = employeeService.getEmployeeById(actingEmployeeId);
-        Employee createdEmployee = employeeService.createEmployee(actingEmployee, employee);
-        return new ResponseEntity<>(createdEmployee, HttpStatus.CREATED);
+    @Autowired
+    public EmployeeController(EmployeeService employeeService) {
+        this.employeeService = employeeService;
     }
 
-    // Get all employees
-    @Operation(summary = "Get all employees", description = "Retrieves a list of all employee records.")
+    // Fetch all employees (accessible to HR Personnel and Admins)
+    @Operation(summary = "Get all employees")
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
     public ResponseEntity<List<Employee>> getAllEmployees() {
         List<Employee> employees = employeeService.getAllEmployees();
-        return new ResponseEntity<>(employees, HttpStatus.OK);
+        return ResponseEntity.ok(employees);
     }
 
-    // Get an employee by ID
-    @Operation(summary = "Get an employee by ID", description = "Retrieves an employee record by their unique identifier.")
-    @GetMapping("/{id}")
-    public ResponseEntity<Employee> getEmployeeById(@PathVariable Long id) {
-        Employee employee = employeeService.getEmployeeById(id);
-        return new ResponseEntity<>(employee, HttpStatus.OK);
+    // Fetch an employee by ID (accessible to HR Personnel and Admins)
+    @Operation(summary = "Get an employee by ID")
+    @GetMapping("/{employeeId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
+    public ResponseEntity<Employee> getEmployeeById(@PathVariable String employeeId) {
+        Optional<Employee> employee = employeeService.getEmployeeById(employeeId);
+        return employee.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Update an employee
-    @Operation(summary = "Update an employee", description = "Modifies an existing employee record in the system.")
-    @PutMapping("/{id}")
-    public ResponseEntity<Employee> updateEmployee(
-            @RequestParam Long actingEmployeeId, 
-            @PathVariable Long id, 
-            @Valid @RequestBody Employee employeeDetails) {
-        Employee actingEmployee = employeeService.getEmployeeById(actingEmployeeId);
-        Employee updatedEmployee = employeeService.updateEmployee(actingEmployee, id, employeeDetails);
-        return new ResponseEntity<>(updatedEmployee, HttpStatus.OK);
+    // Fetch an employee by username (accessible to HR Personnel and Admins)
+    @Operation(summary = "Get an employee by username")
+    @GetMapping("/username/{username}")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
+    public ResponseEntity<Employee> getEmployeeByUsername(@PathVariable String username) {
+        Optional<Employee> employee = employeeService.getEmployeeByUsername(username);
+        return employee.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Delete an employee
-    @Operation(summary = "Delete an employee", description = "Removes an employee record from the system.")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEmployee(
-            @RequestParam Long actingEmployeeId, 
-            @PathVariable Long id) {
-        Employee actingEmployee = employeeService.getEmployeeById(actingEmployeeId);
-        employeeService.deleteEmployee(actingEmployee, id);
-        return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    // Add a new employee (accessible to HR Personnel and Admins)
+    @Operation(summary = "Add a new employee")
+    @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
+    public ResponseEntity<Employee> addEmployee(@RequestBody Employee employee, @RequestParam String modifiedBy) {
+        try {
+            Employee createdEmployee = employeeService.addEmployee(employee, modifiedBy);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdEmployee);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
     }
 
-    // Search employees by name, ID, department, or job title
-    @Operation(summary = "Search employees", description = "Finds employee records based on search criteria.")
+    // Update an existing employee (accessible to HR Personnel and Admins)
+    @Operation(summary = "Update an existing employee")
+    @PutMapping("/{employeeId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
+    public ResponseEntity<Employee> updateEmployee(@PathVariable String employeeId, @RequestBody Employee updatedDetails,
+                                                   @RequestParam String modifiedBy) {
+        try {
+            Employee updatedEmployee = employeeService.updateEmployee(employeeId, updatedDetails, modifiedBy);
+            return ResponseEntity.ok(updatedEmployee);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    // Delete an employee (accessible to Admins only)
+    @Operation(summary = "Delete an employee")
+    @DeleteMapping("/{employeeId}")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<Void> deleteEmployee(@PathVariable String employeeId, @RequestParam String modifiedBy) {
+        try {
+            employeeService.deleteEmployee(employeeId, modifiedBy);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
+    // Search employees by name (accessible to HR Personnel and Admins)
+    @Operation(summary = "Search employees by name")
     @GetMapping("/search")
-    public ResponseEntity<List<Employee>> searchEmployees(
-            @RequestParam(required = false) String name,
-            @RequestParam(required = false) String employeeId,
-            @RequestParam(required = false) String department,
-            @RequestParam(required = false) String jobTitle
-    ) {
-        List<Employee> results = employeeService.searchEmployees(name, employeeId, department, jobTitle);
-        return new ResponseEntity<>(results, HttpStatus.OK);
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
+    public ResponseEntity<List<Employee>> searchEmployeesByName(@RequestParam String name) {
+        List<Employee> employees = employeeService.searchEmployeesByName(name);
+        return ResponseEntity.ok(employees);
     }
 
-    // Filter employees by employment status, department, and hire date
-    @Operation(summary = "Filter employees", description = "Filters employee records based on specified criteria.")
-    @GetMapping("/filter")
-    public ResponseEntity<List<Employee>> filterEmployees(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String department,
-            @RequestParam(required = false) String hireDate
-    ) {
-        List<Employee> results = employeeService.filterEmployees(status, department, hireDate);
-        return new ResponseEntity<>(results, HttpStatus.OK);
+    // Fetch employees by department (accessible to HR Personnel and Admins)
+    @Operation(summary = "Get employees by department")
+    @GetMapping("/department/{departmentId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
+    public ResponseEntity<List<Employee>> getEmployeesByDepartment(@PathVariable String departmentId) {
+        List<Employee> employees = employeeService.getEmployeesByDepartment(departmentId);
+        return ResponseEntity.ok(employees);
+    }
+
+    // Fetch employees by role (accessible to HR Personnel and Admins)
+    @Operation(summary = "Get employees by role")
+    @GetMapping("/role/{roleId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
+    public ResponseEntity<List<Employee>> getEmployeesByRole(@PathVariable String roleId) {
+        List<Employee> employees = employeeService.getEmployeesByRole(roleId);
+        return ResponseEntity.ok(employees);
+    }
+
+    // Fetch employees hired within a date range (accessible to HR Personnel and Admins)
+    @Operation(summary = "Get employees hired within a date range")
+    @GetMapping("/hired")
+    @PreAuthorize("hasAnyAuthority('ROLE_HR', 'ROLE_ADMIN')")
+    public ResponseEntity<List<Employee>> getEmployeesByHireDateRange(@RequestParam Date startDate,
+                                                                      @RequestParam Date endDate) {
+        List<Employee> employees = employeeService.getEmployeesByHireDateRange(startDate, endDate);
+        return ResponseEntity.ok(employees);
+    }
+
+    @Operation(summary = "Generate employee report")
+    @GetMapping("/report")
+    public ResponseEntity<Resource> generateEmployeeReport() {
+        String report = employeeService.generateEmployeeReport();
+        ByteArrayResource resource = new ByteArrayResource(report.getBytes(StandardCharsets.UTF_8));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=employee_report.csv")
+                .contentType(MediaType.parseMediaType("text/csv"))
+                .body(resource);
     }
 }

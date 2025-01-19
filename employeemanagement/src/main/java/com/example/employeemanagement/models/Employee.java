@@ -1,69 +1,84 @@
 package com.example.employeemanagement.models;
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
-import java.util.Set;
-import jakarta.validation.constraints.*;
+import java.sql.Date;
+import java.sql.Timestamp;
+import java.util.Objects;
 
 @Entity
+@Table(name = "employees")
 public class Employee {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long employeeId;
+    @Column(name = "employee_id", nullable = false, unique = true, length = 50)
+    private String employeeId;
 
-    @NotBlank(message = "Full name is required.")
+    @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
-    @NotBlank(message = "Job title is required.")
+
+    @Column(name = "job_title", nullable = false, length = 50)
     private String jobTitle;
 
-    @ManyToOne
-    @JoinColumn(name = "department_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "department_id", referencedColumnName = "department_id")
     private Department department;
 
-    @NotNull(message = "Hire date is required.")
-    private LocalDate hireDate;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id", referencedColumnName = "role_id")
+    private Role role;
 
-    @NotBlank(message = "Employment status is required.")
+    @Column(name = "hire_date", nullable = false)
+    private Date hireDate;
+
+    @Column(name = "employment_status", length = 20)
     private String employmentStatus;
 
-    @NotBlank(message = "Contact information is required.")
-    @Email(message = "Invalid email format.")
+    @Column(name = "contact_info", nullable = false, length = 100)
     private String contactInfo;
 
-    @NotBlank(message = "Address is required.")
+    @Column(name = "address", length = 255)
     private String address;
 
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(
-        name = "employee_roles",
-        joinColumns = @JoinColumn(name = "employee_id"),
-        inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
-    private Set<Role> roles;
+    @Column(name = "username", nullable = false, unique = true, length = 50)
+    private String username;
+
+    @Column(name = "password", nullable = false)
+    private String password;
+
+    @Column(name = "created_at", updatable = false, nullable = false)
+    private Timestamp createdAt;
+
+    @Column(name = "updated_at")
+    private Timestamp updatedAt;
 
     // Default constructor
-    public Employee() {}
+    public Employee() {
+    }
 
-    // Parameterized constructor
-    public Employee(String fullName, String jobTitle, Department department, LocalDate hireDate,
-                    String employmentStatus, String contactInfo, String address, Set<Role> roles) {
+    // Constructor with all fields
+    public Employee(String employeeId, String fullName, String jobTitle, Department department, Role role,
+                    Date hireDate, String employmentStatus, String contactInfo, String address,
+                    String username, String password) {
+        this.employeeId = employeeId;
         this.fullName = fullName;
         this.jobTitle = jobTitle;
         this.department = department;
+        this.role = role;
         this.hireDate = hireDate;
         this.employmentStatus = employmentStatus;
         this.contactInfo = contactInfo;
         this.address = address;
-        this.roles = roles;
+        this.username = username;
+        this.password = password;
+        this.createdAt = new Timestamp(System.currentTimeMillis());
     }
 
     // Getters and Setters
-    public Long getEmployeeId() {
+    public String getEmployeeId() {
         return employeeId;
     }
 
-    public void setEmployeeId(Long employeeId) {
+    public void setEmployeeId(String employeeId) {
         this.employeeId = employeeId;
     }
 
@@ -91,11 +106,19 @@ public class Employee {
         this.department = department;
     }
 
-    public LocalDate getHireDate() {
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
+    public Date getHireDate() {
         return hireDate;
     }
 
-    public void setHireDate(LocalDate hireDate) {
+    public void setHireDate(Date hireDate) {
         this.hireDate = hireDate;
     }
 
@@ -123,26 +146,67 @@ public class Employee {
         this.address = address;
     }
 
-    public Set<Role> getRoles() {
-        return roles;
+    public String getUsername() {
+        return username;
     }
 
-    public void setRoles(Set<Role> roles) {
-        this.roles = roles;
+    public void setUsername(String username) {
+        this.username = username;
     }
 
-    // Optional: Utility methods
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public Timestamp getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(Timestamp createdAt) {
+        this.createdAt = createdAt;
+    }
+
+    public Timestamp getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(Timestamp updatedAt) {
+        this.updatedAt = updatedAt;
+    }
+
+    // Override equals and hashCode
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Employee employee = (Employee) o;
+        return Objects.equals(employeeId, employee.employeeId) &&
+               Objects.equals(username, employee.username);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(employeeId, username);
+    }
+
+    // Override toString
     @Override
     public String toString() {
         return "Employee{" +
-                "employeeId=" + employeeId +
-                ", fullName='" + fullName + '\'' +
-                ", jobTitle='" + jobTitle + '\'' +
-                ", department=" + (department != null ? department.getName() : "null") +
-                ", hireDate=" + hireDate +
-                ", employmentStatus='" + employmentStatus + '\'' +
-                ", contactInfo='" + contactInfo + '\'' +
-                ", address='" + address + '\'' +
-                '}';
+               "employeeId='" + employeeId + '\'' +
+               ", fullName='" + fullName + '\'' +
+               ", jobTitle='" + jobTitle + '\'' +
+               ", department=" + (department != null ? department.getDepartmentId() : null) +
+               ", role=" + (role != null ? role.getRoleId() : null) +
+               ", hireDate=" + hireDate +
+               ", employmentStatus='" + employmentStatus + '\'' +
+               ", username='" + username + '\'' +
+               ", createdAt=" + createdAt +
+               ", updatedAt=" + updatedAt +
+               '}';
     }
 }

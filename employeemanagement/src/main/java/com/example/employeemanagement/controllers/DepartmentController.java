@@ -6,59 +6,104 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
+
+import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/departments")
-@Tag(name = "Department Management", description = "Endpoints for managing departments")
+@Tag(name = "Departments", description = "APIs for department management")
 public class DepartmentController {
 
-    @Autowired
-    private DepartmentService departmentService;
+    private final DepartmentService departmentService;
 
-    // Get all departments
-    @Operation(summary = "Get all departments", description = "Retrieves a list of all departments.")
+    @Autowired
+    public DepartmentController(DepartmentService departmentService) {
+        this.departmentService = departmentService;
+    }
+
+    // Fetch all departments
+    @Operation(summary = "Get all departments")
     @GetMapping
     public ResponseEntity<List<Department>> getAllDepartments() {
         List<Department> departments = departmentService.getAllDepartments();
-        return new ResponseEntity<>(departments, HttpStatus.OK);
+        return ResponseEntity.ok(departments);
     }
 
-    // Get a department by ID
-    @Operation(summary = "Get a department by ID", description = "Retrieves a department by its unique identifier.")
-    @GetMapping("/{id}")
-    public ResponseEntity<Department> getDepartmentById(@PathVariable Long id) {
-        Department department = departmentService.getDepartmentById(id);
-        return department != null ? new ResponseEntity<>(department, HttpStatus.OK)
-                                   : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    // Fetch a department by ID
+    @Operation(summary = "Get a department by ID")
+    @GetMapping("/{departmentId}")
+    public ResponseEntity<Department> getDepartmentById(@PathVariable String departmentId) {
+        Optional<Department> department = departmentService.getDepartmentById(departmentId);
+        return department.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Create a new department
-    @Operation(summary = "Create a new department", description = "Adds a new department to the system.")
+    // Fetch a department by name
+    @Operation(summary = "Get a department by name")
+    @GetMapping("/name")
+    public ResponseEntity<Department> getDepartmentByName(@RequestParam String name) {
+        Optional<Department> department = departmentService.getDepartmentByName(name);
+        return department.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // Add a new department
+    @Operation(summary = "Add a new department")
     @PostMapping
-    public ResponseEntity<Department> createDepartment(@RequestBody Department department) {
-        Department createdDepartment = departmentService.createDepartment(department);
-        return new ResponseEntity<>(createdDepartment, HttpStatus.CREATED);
+    public ResponseEntity<Department> addDepartment(@RequestBody Department department) {
+        try {
+            Department createdDepartment = departmentService.addDepartment(department);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdDepartment);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+        }
     }
 
     // Update an existing department
-    @Operation(summary = "Update a department", description = "Modifies an existing department in the system.")
-    @PutMapping("/{id}")
-    public ResponseEntity<Department> updateDepartment(@PathVariable Long id, @RequestBody Department department) {
-        Department updatedDepartment = departmentService.updateDepartment(id, department);
-        return updatedDepartment != null ? new ResponseEntity<>(updatedDepartment, HttpStatus.OK)
-                                         : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    @Operation(summary = "Update an existing department")
+    @PutMapping("/{departmentId}")
+    public ResponseEntity<Department> updateDepartment(@PathVariable String departmentId,
+                                                       @RequestBody Department updatedDetails) {
+        try {
+            Department updatedDepartment = departmentService.updateDepartment(departmentId, updatedDetails);
+            return ResponseEntity.ok(updatedDepartment);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
     }
 
     // Delete a department
-    @Operation(summary = "Delete a department", description = "Removes a department from the system.")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteDepartment(@PathVariable Long id) {
-        boolean isDeleted = departmentService.deleteDepartment(id);
-        return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT)
-                         : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    @Operation(summary = "Delete a department")
+    @DeleteMapping("/{departmentId}")
+    public ResponseEntity<Void> deleteDepartment(@PathVariable String departmentId) {
+        try {
+            departmentService.deleteDepartment(departmentId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+    }
+
+    // Search departments by partial name match
+    @Operation(summary = "Search departments by partial name match")
+    @GetMapping("/search")
+    public ResponseEntity<List<Department>> searchDepartmentsByName(@RequestParam String name) {
+        List<Department> departments = departmentService.searchDepartmentsByName(name);
+        return ResponseEntity.ok(departments);
+    }
+
+    // Count employees in a department
+    @Operation(summary = "Count employees in a department")
+    @GetMapping("/{departmentId}/employee-count")
+    public ResponseEntity<Long> countEmployeesInDepartment(@PathVariable String departmentId) {
+        try {
+            long count = departmentService.countEmployeesInDepartment(departmentId);
+            return ResponseEntity.ok(count);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
     }
 }

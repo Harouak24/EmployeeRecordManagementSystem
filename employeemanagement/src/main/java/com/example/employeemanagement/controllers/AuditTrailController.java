@@ -3,53 +3,75 @@ package com.example.employeemanagement.controllers;
 import com.example.employeemanagement.models.AuditTrail;
 import com.example.employeemanagement.services.AuditTrailService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
+
+import java.sql.Timestamp;
+import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/audit-trails")
-@Tag(name = "Audit Trail Management", description = "Endpoints for managing audit trail entries")
+@Tag(name = "Audit Trails", description = "APIs for audit trail management")
 public class AuditTrailController {
 
+    private final AuditTrailService auditTrailService;
+
     @Autowired
-    private AuditTrailService auditTrailService;
+    public AuditTrailController(AuditTrailService auditTrailService) {
+        this.auditTrailService = auditTrailService;
+    }
 
-    // Get all audit trail entries
-    @Operation(summary = "Get all audit trails", description = "Retrieves a list of all audit trail entries.")
+    // Fetch all audit logs
+    @Operation(summary = "Get all audit logs")
     @GetMapping
-    public ResponseEntity<List<AuditTrail>> getAllAuditTrails() {
-        List<AuditTrail> auditTrails = auditTrailService.getAllAuditTrails();
-        return new ResponseEntity<>(auditTrails, HttpStatus.OK);
+    public ResponseEntity<List<AuditTrail>> getAllAuditLogs() {
+        List<AuditTrail> auditLogs = auditTrailService.getAllAuditLogs();
+        return ResponseEntity.ok(auditLogs);
     }
 
-    // Get an audit trail entry by ID
-    @Operation(summary = "Get an audit trail by ID", description = "Retrieves an audit trail entry by its unique identifier.")
-    @GetMapping("/{id}")
-    public ResponseEntity<AuditTrail> getAuditTrailById(@PathVariable Long id) {
-        AuditTrail auditTrail = auditTrailService.getAuditTrailById(id);
-        return auditTrail != null ? new ResponseEntity<>(auditTrail, HttpStatus.OK)
-                                  : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    // Fetch an audit log by ID
+    @Operation(summary = "Get an audit log by ID")
+    @GetMapping("/{changeId}")
+    public ResponseEntity<AuditTrail> getAuditLogById(@PathVariable Long changeId) {
+        Optional<AuditTrail> auditLog = auditTrailService.getAuditLogById(changeId);
+        return auditLog.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Add a new audit trail entry
-    @Operation(summary = "Create an audit trail", description = "Adds a new audit trail entry to the system.")
-    @PostMapping
-    public ResponseEntity<AuditTrail> createAuditTrail(@RequestBody AuditTrail auditTrail) {
-        AuditTrail createdAuditTrail = auditTrailService.createAuditTrail(auditTrail);
-        return new ResponseEntity<>(createdAuditTrail, HttpStatus.CREATED);
+    // Fetch audit logs for a specific employee
+    @Operation(summary = "Get audit logs by employee")
+    @GetMapping("/employee/{employeeId}")
+    public ResponseEntity<List<AuditTrail>> getAuditLogsByEmployee(@PathVariable String employeeId) {
+        List<AuditTrail> auditLogs = auditTrailService.getAuditLogsByEmployee(employeeId);
+        return ResponseEntity.ok(auditLogs);
     }
 
-    // Delete an audit trail entry by ID
-    @Operation(summary = "Delete an audit trail", description = "Removes an audit trail entry from the system.")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteAuditTrail(@PathVariable Long id) {
-        boolean isDeleted = auditTrailService.deleteAuditTrail(id);
-        return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT)
-                         : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    // Fetch audit logs for a specific modifier (user who made changes)
+    @Operation(summary = "Get audit logs by modifier")
+    @GetMapping("/modifier")
+    public ResponseEntity<List<AuditTrail>> getAuditLogsByModifier(@RequestParam String modifiedBy) {
+        List<AuditTrail> auditLogs = auditTrailService.getAuditLogsByModifier(modifiedBy);
+        return ResponseEntity.ok(auditLogs);
+    }
+
+    // Fetch audit logs within a specific time range
+    @Operation(summary = "Get audit logs by timestamp range")
+    @GetMapping("/time-range")
+    public ResponseEntity<List<AuditTrail>> getAuditLogsByTimestampRange(@RequestParam Timestamp start,
+                                                                         @RequestParam Timestamp end) {
+        List<AuditTrail> auditLogs = auditTrailService.getAuditLogsByTimestampRange(start, end);
+        return ResponseEntity.ok(auditLogs);
+    }
+
+    // Fetch audit logs for a specific employee within a specific time range
+    @Operation(summary = "Get audit logs by employee and timestamp range")
+    @GetMapping("/employee/{employeeId}/time-range")
+    public ResponseEntity<List<AuditTrail>> getAuditLogsByEmployeeAndTimestampRange(@PathVariable String employeeId,
+                                                                                    @RequestParam Timestamp start,
+                                                                                    @RequestParam Timestamp end) {
+        List<AuditTrail> auditLogs = auditTrailService.getAuditLogsByEmployeeAndTimestampRange(employeeId, start, end);
+        return ResponseEntity.ok(auditLogs);
     }
 }

@@ -8,58 +8,89 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/roles")
-@Tag(name = "Role Management", description = "Endpoints for managing user roles")
+@Tag(name = "Roles", description = "APIs for role management")
 public class RoleController {
 
-    @Autowired
-    private RoleService roleService;
+    private final RoleService roleService;
 
-    // Get all roles
-    @Operation(summary = "Get all roles", description = "Retrieves a list of all user roles.")
+    @Autowired
+    public RoleController(RoleService roleService) {
+        this.roleService = roleService;
+    }
+
+    // Fetch all roles
+    @Operation(summary = "Get all roles")
     @GetMapping
     public ResponseEntity<List<Role>> getAllRoles() {
         List<Role> roles = roleService.getAllRoles();
-        return new ResponseEntity<>(roles, HttpStatus.OK);
+        return ResponseEntity.ok(roles);
     }
 
-    // Get role by ID
-    @Operation(summary = "Get a role by ID", description = "Retrieves a user role by their unique identifier.")
-    @GetMapping("/{id}")
-    public ResponseEntity<Role> getRoleById(@PathVariable Long id) {
-        Role role = roleService.getRoleById(id);
-        return role != null ? new ResponseEntity<>(role, HttpStatus.OK)
-                            : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    // Fetch a role by ID
+    @Operation(summary = "Get a role by ID")
+    @GetMapping("/{roleId}")
+    public ResponseEntity<Role> getRoleById(@PathVariable String roleId) {
+        Optional<Role> role = roleService.getRoleById(roleId);
+        return role.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
-    // Create a new role
-    @Operation(summary = "Create a new role", description = "Adds a new user role to the system.")
+    // Fetch a role by name
+    @Operation(summary = "Get a role by name")
+    @GetMapping("/name")
+    public ResponseEntity<Role> getRoleByName(@RequestParam String name) {
+        Optional<Role> role = roleService.getRoleByName(name);
+        return role.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    // Add a new role
+    @Operation(summary = "Add a new role")
     @PostMapping
-    public ResponseEntity<Role> createRole(@RequestBody Role role) {
-        Role createdRole = roleService.createRole(role);
-        return new ResponseEntity<>(createdRole, HttpStatus.CREATED);
+    public ResponseEntity<Role> addRole(@RequestBody Role role) {
+        try {
+            Role createdRole = roleService.addRole(role);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdRole);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(null);
+        }
     }
 
     // Update an existing role
-    @Operation(summary = "Update a role", description = "Modifies an existing user role in the system.")
-    @PutMapping("/{id}")
-    public ResponseEntity<Role> updateRole(@PathVariable Long id, @RequestBody Role role) {
-        Role updatedRole = roleService.updateRole(id, role);
-        return updatedRole != null ? new ResponseEntity<>(updatedRole, HttpStatus.OK)
-                                   : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    @Operation(summary = "Update an existing role")
+    @PutMapping("/{roleId}")
+    public ResponseEntity<Role> updateRole(@PathVariable String roleId, @RequestBody Role updatedDetails) {
+        try {
+            Role updatedRole = roleService.updateRole(roleId, updatedDetails);
+            return ResponseEntity.ok(updatedRole);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
     }
 
     // Delete a role
-    @Operation(summary = "Delete a role", description = "Removes a user role from the system.")
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRole(@PathVariable Long id) {
-        boolean isDeleted = roleService.deleteRole(id);
-        return isDeleted ? new ResponseEntity<>(HttpStatus.NO_CONTENT)
-                         : new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    @Operation(summary = "Delete a role")
+    @DeleteMapping("/{roleId}")
+    public ResponseEntity<Void> deleteRole(@PathVariable String roleId) {
+        try {
+            roleService.deleteRole(roleId);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+    }
+
+    // List all roles sorted by name
+    @Operation(summary = "Get all roles sorted by name")
+    @GetMapping("/sorted")
+    public ResponseEntity<List<Role>> getAllRolesSortedByName() {
+        List<Role> roles = roleService.getAllRolesSortedByName();
+        return ResponseEntity.ok(roles);
     }
 }
