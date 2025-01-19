@@ -2,7 +2,7 @@ package com.example.employeemanagement.models;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
-import java.util.Set;
+import java.util.List;
 
 @Entity
 public class Employee {
@@ -29,14 +29,14 @@ public class Employee {
         joinColumns = @JoinColumn(name = "employee_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
-    private Set<Role> roles;
+    private List<Role> roles;
 
     // Default constructor
     public Employee() {}
 
     // Parameterized constructor
     public Employee(String fullName, String jobTitle, Department department, LocalDate hireDate,
-                    String employmentStatus, String contactInfo, String address, Set<Role> roles) {
+                    String employmentStatus, String contactInfo, String address, List<Role> roles) {
         this.fullName = fullName;
         this.jobTitle = jobTitle;
         this.department = department;
@@ -112,11 +112,11 @@ public class Employee {
         this.address = address;
     }
 
-    public Set<Role> getRoles() {
+    public List<Role> getRoles() {
         return roles;
     }
 
-    public void setRoles(Set<Role> roles) {
+    public void setRoles(List<Role> roles) {
         this.roles = roles;
     }
 
