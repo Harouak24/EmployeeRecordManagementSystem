@@ -6,7 +6,7 @@ import com.example.employeemanagement.repositories.EmployeeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 
 @Service
@@ -16,59 +16,52 @@ public class UserRolePermissionService {
     private EmployeeRepository employeeRepository;
 
     // Check if a user has permission to perform a specific action
-    public boolean hasPermission(Long userId, String action, String target) {
-        Optional<Employee> user = employeeRepository.findById(userId);
+    public boolean hasPermission(Employee actingEmployee, String action, String target) {
+        Set<Role> roles = actingEmployee.getRoles();
 
-        if (user.isPresent()) {
-            Employee employee = user.get();
-            List<Role> roles = employee.getRoles();
-
-            for (Role role : roles) {
-                switch (role.getName()) {
-                    case "HR_PERSONNEL":
-                        if (action.equals("CRUD") || action.equals("VIEW")) {
-                            return true;
-                        }
-                        break;
-                    case "MANAGER":
-                        if (action.equals("UPDATE") && target.equals("DEPARTMENT")) {
-                            return true;
-                        }
-                        if (action.equals("VIEW") && target.equals("DEPARTMENT")) {
-                            return true;
-                        }
-                        break;
-                    case "ADMINISTRATOR":
-                        return true; // Full access
-                }
+        for (Role role : roles) {
+            switch (role.getName()) {
+                case "HR_PERSONNEL":
+                    if (action.equals("CRUD") || action.equals("VIEW")) {
+                        return true;
+                    }
+                    break;
+                case "MANAGER":
+                    if (action.equals("UPDATE") && target.equals("DEPARTMENT")) {
+                        return true;
+                    }
+                    if (action.equals("VIEW") && target.equals("DEPARTMENT")) {
+                        return true;
+                    }
+                    break;
+                case "ADMINISTRATOR":
+                    return true; // Full access
             }
         }
-
         return false; // Default to no access
     }
 
     // Retrieve employees accessible to a manager
-    public List<Employee> getEmployeesForManager(Long managerId) {
-        Optional<Employee> manager = employeeRepository.findById(managerId);
-        if (manager.isPresent() && manager.get().getRoles().stream().anyMatch(role -> role.getName().equals("MANAGER"))) {
-            return employeeRepository.findByManagerId(managerId);
+    public Set<Employee> getEmployeesForManager(Employee manager) {
+        if (hasPermission(manager, "VIEW", "DEPARTMENT")) {
+            return employeeRepository.findByManagerId(manager.getEmployeeId());
         }
-        return null;
+        throw new SecurityException("Permission denied: Manager does not have access to view employees in this department.");
     }
 
     // CRUD actions with role validation
-    public Employee createEmployeeWithRoleValidation(Long userId, Employee employee) {
-        if (hasPermission(userId, "CRUD", "EMPLOYEE")) {
+    public Employee createEmployeeWithRoleValidation(Employee actingEmployee, Employee employee) {
+        if (hasPermission(actingEmployee, "CRUD", "EMPLOYEE")) {
             return employeeRepository.save(employee);
         }
-        throw new SecurityException("User does not have permission to create employees.");
+        throw new SecurityException("Permission denied: You do not have the required role to create employees.");
     }
 
-    public Employee updateEmployeeWithRoleValidation(Long userId, Long employeeId, Employee updatedEmployee) {
-        if (hasPermission(userId, "UPDATE", "EMPLOYEE")) {
+    public Employee updateEmployeeWithRoleValidation(Employee actingEmployee, Long employeeId, Employee updatedEmployee) {
+        if (hasPermission(actingEmployee, "UPDATE", "EMPLOYEE")) {
             return updateEmployee(employeeId, updatedEmployee);
         }
-        throw new SecurityException("User does not have permission to update employees.");
+        throw new SecurityException("Permission denied: You do not have the required role to update employees.");
     }
 
     private Employee updateEmployee(Long employeeId, Employee updatedEmployee) {
@@ -87,11 +80,11 @@ public class UserRolePermissionService {
         throw new IllegalArgumentException("Employee not found.");
     }
 
-    public boolean deleteEmployeeWithRoleValidation(Long userId, Long employeeId) {
-        if (hasPermission(userId, "CRUD", "EMPLOYEE")) {
+    public boolean deleteEmployeeWithRoleValidation(Employee actingEmployee, Long employeeId) {
+        if (hasPermission(actingEmployee, "CRUD", "EMPLOYEE")) {
             employeeRepository.deleteById(employeeId);
             return true;
         }
-        throw new SecurityException("User does not have permission to delete employees.");
+        throw new SecurityException("Permission denied: You do not have the required role to delete employees.");
     }
 }

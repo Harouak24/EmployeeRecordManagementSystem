@@ -7,12 +7,19 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 public class EmployeeService {
 
     @Autowired
     private EmployeeRepository employeeRepository;
+
+    // Check if an employee has a specific role
+    private boolean hasRole(Employee employee, String roleName) {
+        return employee.getRoles().stream()
+                .anyMatch(role -> role.getName().equalsIgnoreCase(roleName));
+    }
 
     // Retrieve all employees
     public List<Employee> getAllEmployees() {
@@ -25,35 +32,48 @@ public class EmployeeService {
         return employee.orElse(null);
     }
 
-    // Create a new employee
-    public Employee createEmployee(Employee employee) {
-        return employeeRepository.save(employee);
+    // Create a new employee with role validation
+    public Employee createEmployee(Employee actingEmployee, Employee newEmployee) {
+        if (hasRole(actingEmployee, "HR_PERSONNEL") || hasRole(actingEmployee, "ADMINISTRATOR")) {
+            return employeeRepository.save(newEmployee);
+        }
+        throw new SecurityException("Permission denied: You do not have the required role to create employees.");
     }
 
-    // Update an existing employee
-    public Employee updateEmployee(Long id, Employee updatedEmployee) {
+    // Update an existing employee with role validation
+    public Employee updateEmployee(Employee actingEmployee, Long id, Employee updatedEmployee) {
         Optional<Employee> existingEmployee = employeeRepository.findById(id);
         if (existingEmployee.isPresent()) {
             Employee employee = existingEmployee.get();
-            employee.setFullName(updatedEmployee.getFullName());
-            employee.setJobTitle(updatedEmployee.getJobTitle());
-            employee.setDepartment(updatedEmployee.getDepartment());
-            employee.setHireDate(updatedEmployee.getHireDate());
-            employee.setEmploymentStatus(updatedEmployee.getEmploymentStatus());
-            employee.setContactInfo(updatedEmployee.getContactInfo());
-            employee.setAddress(updatedEmployee.getAddress());
-            return employeeRepository.save(employee);
+
+            // Check role permissions
+            if (hasRole(actingEmployee, "MANAGER") && !employee.getDepartment().equals(actingEmployee.getDepartment())) {
+                throw new SecurityException("Permission denied: Managers can only update employees in their department.");
+            }
+
+            if (hasRole(actingEmployee, "HR_PERSONNEL") || hasRole(actingEmployee, "ADMINISTRATOR") || hasRole(actingEmployee, "MANAGER")) {
+                employee.setFullName(updatedEmployee.getFullName());
+                employee.setJobTitle(updatedEmployee.getJobTitle());
+                employee.setDepartment(updatedEmployee.getDepartment());
+                employee.setHireDate(updatedEmployee.getHireDate());
+                employee.setEmploymentStatus(updatedEmployee.getEmploymentStatus());
+                employee.setContactInfo(updatedEmployee.getContactInfo());
+                employee.setAddress(updatedEmployee.getAddress());
+                return employeeRepository.save(employee);
+            }
         }
-        return null;
+        throw new SecurityException("Permission denied: You do not have the required role to update employees.");
     }
 
-    // Delete an employee
-    public boolean deleteEmployee(Long id) {
-        if (employeeRepository.existsById(id)) {
-            employeeRepository.deleteById(id);
-            return true;
+    // Delete an employee with role validation
+    public boolean deleteEmployee(Employee actingEmployee, Long id) {
+        if (hasRole(actingEmployee, "HR_PERSONNEL") || hasRole(actingEmployee, "ADMINISTRATOR")) {
+            if (employeeRepository.existsById(id)) {
+                employeeRepository.deleteById(id);
+                return true;
+            }
         }
-        return false;
+        throw new SecurityException("Permission denied: You do not have the required role to delete employees.");
     }
 
     // Search employees by name, ID, department, or job title
@@ -72,7 +92,7 @@ public class EmployeeService {
     }
 
     // Retrieve employees by manager
-    public List<Employee> getEmployeesByManager(Long managerId) {
+    public Set<Employee> getEmployeesByManager(Long managerId) {
         return employeeRepository.findByManagerId(managerId);
     }
 }

@@ -10,11 +10,13 @@ public class AuditTrail {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long auditId;
 
-    private String userId;
+    @ManyToOne
+    @JoinColumn(name = "acting_employee_id", nullable = false)
+    private Employee actingEmployee; // The employee performing the action
 
     @ManyToOne
-    @JoinColumn(name = "employee_id")
-    private Employee employee;
+    @JoinColumn(name = "target_employee_id")
+    private Employee targetEmployee; // The employee affected by the action
 
     private String action;
     private String changeDetails;
@@ -25,9 +27,9 @@ public class AuditTrail {
     public AuditTrail() {}
 
     // Parameterized constructor
-    public AuditTrail(String userId, Employee employee, String action, String changeDetails, LocalDateTime timestamp) {
-        this.userId = userId;
-        this.employee = employee;
+    public AuditTrail(Employee actingEmployee, Employee targetEmployee, String action, String changeDetails, LocalDateTime timestamp) {
+        this.actingEmployee = actingEmployee;
+        this.targetEmployee = targetEmployee;
         this.action = action;
         this.changeDetails = changeDetails;
         this.timestamp = timestamp;
@@ -42,20 +44,20 @@ public class AuditTrail {
         this.auditId = auditId;
     }
 
-    public String getUserId() {
-        return userId;
+    public Employee getActingEmployee() {
+        return actingEmployee;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public void setActingEmployee(Employee actingEmployee) {
+        this.actingEmployee = actingEmployee;
     }
 
-    public Employee getEmployee() {
-        return employee;
+    public Employee getTargetEmployee() {
+        return targetEmployee;
     }
 
-    public void setEmployee(Employee employee) {
-        this.employee = employee;
+    public void setTargetEmployee(Employee targetEmployee) {
+        this.targetEmployee = targetEmployee;
     }
 
     public String getAction() {
@@ -87,8 +89,8 @@ public class AuditTrail {
     public String toString() {
         return "AuditTrail{" +
                 "auditId=" + auditId +
-                ", userId='" + userId + '\'' +
-                ", employee=" + (employee != null ? employee.getFullName() : "null") +
+                ", actingEmployee=" + (actingEmployee != null ? actingEmployee.getFullName() : "null") +
+                ", targetEmployee=" + (targetEmployee != null ? targetEmployee.getFullName() : "null") +
                 ", action='" + action + '\'' +
                 ", changeDetails='" + changeDetails + '\'' +
                 ", timestamp=" + timestamp +

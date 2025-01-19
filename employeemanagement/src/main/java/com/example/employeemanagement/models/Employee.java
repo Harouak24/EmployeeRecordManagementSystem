@@ -2,7 +2,8 @@ package com.example.employeemanagement.models;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.Set;
+import jakarta.validation.constraints.*;
 
 @Entity
 public class Employee {
@@ -11,16 +12,26 @@ public class Employee {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long employeeId;
 
+    @NotBlank(message = "Full name is required.")
     private String fullName;
+    @NotBlank(message = "Job title is required.")
     private String jobTitle;
 
     @ManyToOne
     @JoinColumn(name = "department_id")
     private Department department;
 
+    @NotNull(message = "Hire date is required.")
     private LocalDate hireDate;
+
+    @NotBlank(message = "Employment status is required.")
     private String employmentStatus;
+
+    @NotBlank(message = "Contact information is required.")
+    @Email(message = "Invalid email format.")
     private String contactInfo;
+
+    @NotBlank(message = "Address is required.")
     private String address;
 
     @ManyToMany(fetch = FetchType.EAGER)
@@ -29,14 +40,14 @@ public class Employee {
         joinColumns = @JoinColumn(name = "employee_id"),
         inverseJoinColumns = @JoinColumn(name = "role_id")
     )
-    private List<Role> roles;
+    private Set<Role> roles;
 
     // Default constructor
     public Employee() {}
 
     // Parameterized constructor
     public Employee(String fullName, String jobTitle, Department department, LocalDate hireDate,
-                    String employmentStatus, String contactInfo, String address, List<Role> roles) {
+                    String employmentStatus, String contactInfo, String address, Set<Role> roles) {
         this.fullName = fullName;
         this.jobTitle = jobTitle;
         this.department = department;
@@ -112,11 +123,11 @@ public class Employee {
         this.address = address;
     }
 
-    public List<Role> getRoles() {
+    public Set<Role> getRoles() {
         return roles;
     }
 
-    public void setRoles(List<Role> roles) {
+    public void setRoles(Set<Role> roles) {
         this.roles = roles;
     }
 

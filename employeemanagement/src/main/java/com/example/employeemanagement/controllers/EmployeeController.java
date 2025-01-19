@@ -19,8 +19,11 @@ public class EmployeeController {
 
     // Create a new employee
     @PostMapping
-    public ResponseEntity<Employee> createEmployee(@Valid @RequestBody Employee employee) {
-        Employee createdEmployee = employeeService.createEmployee(employee);
+    public ResponseEntity<Employee> createEmployee(
+            @RequestParam Long actingEmployeeId, 
+            @Valid @RequestBody Employee employee) {
+        Employee actingEmployee = employeeService.getEmployeeById(actingEmployeeId);
+        Employee createdEmployee = employeeService.createEmployee(actingEmployee, employee);
         return new ResponseEntity<>(createdEmployee, HttpStatus.CREATED);
     }
 
@@ -40,15 +43,22 @@ public class EmployeeController {
 
     // Update an employee
     @PutMapping("/{id}")
-    public ResponseEntity<Employee> updateEmployee(@PathVariable Long id, @Valid @RequestBody Employee employeeDetails) {
-        Employee updatedEmployee = employeeService.updateEmployee(id, employeeDetails);
+    public ResponseEntity<Employee> updateEmployee(
+            @RequestParam Long actingEmployeeId, 
+            @PathVariable Long id, 
+            @Valid @RequestBody Employee employeeDetails) {
+        Employee actingEmployee = employeeService.getEmployeeById(actingEmployeeId);
+        Employee updatedEmployee = employeeService.updateEmployee(actingEmployee, id, employeeDetails);
         return new ResponseEntity<>(updatedEmployee, HttpStatus.OK);
     }
 
     // Delete an employee
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
-        employeeService.deleteEmployee(id);
+    public ResponseEntity<Void> deleteEmployee(
+            @RequestParam Long actingEmployeeId, 
+            @PathVariable Long id) {
+        Employee actingEmployee = employeeService.getEmployeeById(actingEmployeeId);
+        employeeService.deleteEmployee(actingEmployee, id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
